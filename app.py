@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import linprog
 
-st.set_page_config(page_title="Logistics Optimizer", layout="wide")
+st.set_page_config(page_title="Logistics Optimizer", layout="centered")
 
 st.title("🚚 Delivery Route Optimizer")
 st.markdown("Developed by [amcbhome](https://github.com/amcbhome)")
@@ -22,7 +22,7 @@ c1 = st.sidebar.number_input("Store 1 Capacity", value=2000)
 c2 = st.sidebar.number_input("Store 2 Capacity", value=3000)
 c3 = st.sidebar.number_input("Store 3 Capacity", value=2000)
 
-# --- LOGIC ---
+# --- CONSTANTS ---
 distances = np.array([
     [22, 33, 40],
     [27, 30, 22],
@@ -32,7 +32,7 @@ distances = np.array([
 supply_fixed = [s1, s2, s3]
 store_caps = [c1, c2, c3]
 
-# Flattened cost vector
+# --- OPTIMIZATION LOGIC ---
 c = (distances * cost_per_mile).flatten()
 
 # Constraints: Supply (Equality)
@@ -55,30 +55,30 @@ if st.button("Run Optimization Engine"):
         if res.success:
             st.success(f"### Optimal Total Cost: £{res.fun:,.2f}")
             
-            # Formatting the matrix
-            optimal_x = res.x.reshape(3, 3).round(0)
+            # 1. Format Matrix (Trimmed to 0 decimal places)
+            optimal_x = res.x.reshape(3, 3).astype(int)
             df_matrix = pd.DataFrame(
                 optimal_x, 
                 index=["Depot 1", "Depot 2", "Depot 3"], 
                 columns=["Store 1", "Store 2", "Store 3"]
             )
             
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.subheader("Optimal Shipping Matrix")
-                st.table(df_matrix)
+            st.subheader("Optimal Shipping Schedule (Units)")
+            st.table(df_matrix)
 
-            with col2:
-                st.subheader("Capacity Utilization")
-                delivered = optimal_x.sum(axis=0)
-                slack = np.array(store_caps) - delivered
-                df_slack = pd.DataFrame({
-                    "Capacity": store_caps,
-                    "Actual": delivered,
-                    "Slack": slack
-                }, index=["Store 1", "Store 2", "Store 3"])
-                st.bar_chart(df_slack[['Actual', 'Capacity']])
-                st.dataframe(df_slack)
+            # 2. Format Slack Analysis (Trimmed to 0 decimal places)
+            st.subheader("Capacity Utilization & Slack")
+            delivered = optimal_x.sum(axis=0)
+            slack = np.array(store_caps) - delivered
+            
+            df_slack = pd.DataFrame({
+                "Capacity": store_caps,
+                "Actual Delivered": delivered,
+                "Remaining Slack": slack
+            }, index=["Store 1", "Store 2", "Store 3"])
+            
+            # Displaying as a clean table instead of a chart
+            st.table(df_slack)
+            
         else:
-            st.error("Optimization failed. Please check your constraints.")
+            st.error("Optimization failed. The constraints provided do not allow for a valid solution.")
