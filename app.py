@@ -10,6 +10,7 @@ st.markdown("Developed by [amcbhome](https://github.com/amcbhome)")
 
 # --- SIDEBAR INPUTS ---
 st.sidebar.header("Global Parameters")
+# Input remains a float for precision during calculation, but display is trimmed
 cost_per_mile = st.sidebar.number_input("Cost per unit/mile (£)", value=5.0, step=0.5)
 
 st.sidebar.header("Depot Supply")
@@ -53,9 +54,10 @@ if st.button("Run Optimization Engine"):
         res = linprog(c=c, A_ub=A_ub, b_ub=store_caps, A_eq=A_eq, b_eq=supply_fixed, method="highs")
 
         if res.success:
-            st.success(f"### Optimal Total Cost: £{res.fun:,.2f}")
+            # 1. Trimmed Cost to 0 decimal places
+            st.success(f"### Optimal Total Cost: £{res.fun:,.0f}")
             
-            # 1. Format Matrix (Trimmed to 0 decimal places)
+            # 2. Format Matrix (Integers)
             optimal_x = res.x.reshape(3, 3).astype(int)
             df_matrix = pd.DataFrame(
                 optimal_x, 
@@ -66,7 +68,7 @@ if st.button("Run Optimization Engine"):
             st.subheader("Optimal Shipping Schedule (Units)")
             st.table(df_matrix)
 
-            # 2. Format Slack Analysis (Trimmed to 0 decimal places)
+            # 3. Format Slack Analysis (Integers)
             st.subheader("Capacity Utilization & Slack")
             delivered = optimal_x.sum(axis=0)
             slack = np.array(store_caps) - delivered
@@ -77,7 +79,6 @@ if st.button("Run Optimization Engine"):
                 "Remaining Slack": slack
             }, index=["Store 1", "Store 2", "Store 3"])
             
-            # Displaying as a clean table instead of a chart
             st.table(df_slack)
             
         else:
